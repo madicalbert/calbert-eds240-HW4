@@ -1,0 +1,121 @@
+---
+title: "data_exploration"
+format: html
+---
+
+```{r}
+library(tidyverse)
+cites <- read.csv("cites_felidae_1975_2024.csv")
+cites_recent <- read.csv("cites_felidae_2000_2024.csv")
+```
+
+```{r}
+summary(cites)
+
+cites %>%
+  count(Taxon) %>%
+  ggplot(aes(x = Taxon, y = n)) +
+  geom_col() +
+  coord_flip()
+
+common_names <- data.frame(
+  Taxon = c(
+    "Panthera leo", 
+    "Panthera tigris", 
+    "Acinonyx jubatus", 
+    "Panthera pardus", 
+    "Lynx rufus", 
+    "Puma concolor", 
+    "Lynx lynx", 
+    "Leptailurus serval", 
+    "Caracal caracal", 
+    "Lynx canadensis"
+  ),
+  CommonName = c(
+    "Lion", 
+    "Tiger", 
+    "Cheetah", 
+    "Leopard", 
+    "Bobcat", 
+    "Mountain Lion", 
+    "Eurasian Lynx", 
+    "Serval", 
+    "Caracal", 
+    "Canada Lynx"
+  )
+)
+
+# Step 1: Count instances per Taxon
+species_count <- cites %>%
+  count(Taxon)  
+
+# Step 2: Merge counts and common names
+top_species <- species_count %>%
+  left_join(common_names, by = "Taxon")  
+
+# Step 3: Arrange and select top 10 species
+top_species <- top_species %>%
+  arrange(n) %>%                          
+  slice_max(n, n = 10)                   
+
+# Step 4: Plotting top 10 species
+ggplot(top_species, aes(x = reorder(paste(CommonName, Taxon, sep = " ("), n), y = n)) +
+  geom_col() +
+  coord_flip() +
+  theme_minimal()
+```
+
+```{r}
+cites_recent %>%
+  count(Taxon) %>%
+  ggplot(aes(x = Taxon, y = n)) +
+  geom_col() +
+  coord_flip()
+
+common_names <- data.frame(
+  Taxon = c(
+    "Panthera leo", 
+    "Panthera tigris", 
+    "Acinonyx jubatus", 
+    "Panthera pardus", 
+    "Lynx rufus", 
+    "Puma concolor", 
+    "Lynx lynx", 
+    "Leptailurus serval", 
+    "Caracal caracal", 
+    "Lynx canadensis"
+  ),
+  CommonName = c(
+    "Lion", 
+    "Tiger", 
+    "Cheetah", 
+    "Leopard", 
+    "Bobcat", 
+    "Mountain Lion", 
+    "Eurasian Lynx", 
+    "Serval", 
+    "Caracal", 
+    "Canada Lynx"
+  )
+)
+
+# Step 1: Count instances per Taxon
+species_count <- cites_recent %>%
+  count(Taxon)  
+
+# Step 2: Merge counts and common names
+top_species <- species_count %>%
+  left_join(common_names, by = "Taxon")  
+
+# Step 3: Arrange and select top 10 species
+top_species <- top_species %>%
+  arrange(n) %>%                          
+  slice_max(n, n = 10)                   
+
+# Step 4: Plotting top 10 species
+ggplot(top_species, aes(x = reorder(paste(CommonName, Taxon, sep = " ("), n), y = n)) +
+  geom_col() +
+  coord_flip() +
+  theme_minimal()
+```
+
