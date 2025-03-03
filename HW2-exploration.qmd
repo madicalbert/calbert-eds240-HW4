@@ -1,0 +1,315 @@
+---
+title: "HW2-exploration"
+author: Madi Calbert
+date: February 2, 2025
+message: false
+warning: false 
+format:
+  html:
+    embed-resources: true 
+---
+
+# Set Up
+
+```{r}
+#| message: false
+#| warning: false 
+
+#load libraries
+library(tidyverse)
+library(here)
+library(janitor)
+library(scales)
+
+#load data
+cites <- read.csv(here("data/cites_felidae_1975_2024.csv"))
+cites_recent <- read.csv(here("data/cites_felidae_2000_2024.csv"))
+```
+
+# Tidy Data
+
+```{r}
+#clean and wrangle data
+cites <- cites %>% 
+  clean_names() 
+
+#add column of common names of top 10 species 
+common_names <- data.frame(
+  taxon = c("Panthera leo", 
+            "Panthera tigris", 
+            "Acinonyx jubatus", 
+            "Panthera pardus", 
+            "Lynx rufus", 
+            "Puma concolor", 
+            "Lynx lynx", 
+            "Leptailurus serval", 
+            "Caracal caracal", 
+            "Lynx canadensis"),  
+  common_name = c("Lion", 
+                  "Tiger", 
+                  "Cheetah", 
+                  "Leopard", 
+                  "Bobcat", 
+                  "Mountain Lion", 
+                  "Eurasian Lynx", 
+                  "Serval", 
+                  "Caracal", 
+                  "Canada Lynx"))
+
+cites <- cites %>%
+  left_join(common_names, by = "taxon")  
+
+missing_species <- cites %>%
+  filter(is.na(common_name)) %>%
+  distinct(taxon)
+
+# print(missing_species)  #shows scientific names without a match, there's a lot lol
+```
+
+
+# Data Exploration
+
+## Top 10 Reported Species
+
+What is the most commonly reported species from the *Felidae* Family
+in the CITES database?
+
+```{r}
+#data viz of most commonly reported species
+
+#Count instances per Taxon
+species_count <- cites %>%
+  count(taxon)  
+
+#Merge counts and common names
+top_species <- species_count %>%
+  left_join(common_names, by = "taxon")  
+
+#Arrange and select top 10 species
+top_species <- top_species %>%
+  arrange(n) %>%                          
+  slice_max(n, n = 10)                   
+
+#Plot top 10 species
+ggplot(top_species, aes(x = reorder(common_name, n), y = n)) +
+  geom_col() +
+  geom_text(aes(label = comma(n)), hjust = 1.2, color = "white") +
+  coord_flip() +
+  theme_minimal() +
+  labs(y = "Individuals Reported", 
+       x = NULL,
+       title = expression("Top 10 CITES Reported Species in " * italic("Felidae") * " Family from 1975-2024")) +
+   scale_y_continuous(expand = expansion(mult = c(0,0)), labels = comma)
+```
+
+## Importers / Exporters
+
+Which countries are the largest importers/exporters for the top 10
+species within the *Felidae* Family?
+
+```{r}
+#create new df to isolate the top 10 reported species from above
+top_cats_2024 <- cites %>%
+  filter(common_name %in% top_species$common_name) %>% 
+  filter(year == 2024)
+
+top_cats <- cites %>%
+  filter(common_name %in% top_species$common_name)
+
+#I want to try to make a map that shows the flows of exporting countries to importing countries
+```
+
+
+```{r}
+# amount of live lions in the database, just was curious
+cites %>% 
+  filter(common_name == "Lion") %>% 
+  filter(term == "live") %>% 
+  count(taxon)  
+```
+
+## Purpose / Source
+
+What is the most common purpose (captive breeding, hunting, circus,
+etc.) for top 10 cat transactions?
+
+The reported purpose of the transaction is shown as a one-letter code:
+
+-   B Breeding in captivity or artificial propagation
+
+-   E Educational
+
+-   G Botanical garden
+
+-   H Hunting trophy
+
+-   L Law enforcement/judicial/forensic
+
+-   M Medical (including biomedical research)
+
+-   N Reintroduction or introduction into the wild
+
+-   P Personal
+
+-   Q Circus or travelling exhibition
+
+-   S Scientific
+
+-   T Commercial
+
+-   Z Zoo
+
+```{r}
+top_cats %>%
+  filter(year >= 2022 & year <= 2024) %>% 
+  group_by(purpose) %>%
+  ggplot(aes(x = common_name, fill = purpose)) +
+  geom_bar(stat = "count") +
+  # scale_fill_manual(
+  #   labels = c("Breeding in captivity or artificial propagation",
+  #              "Educational", 
+  #              "Botanical garden", 
+  #              "Hunting trophy",
+  #              "Law enforcement/judicial/forensic", 
+  #              "Medical (including biomedical research)",
+  #              "Reintroduction or introduction into the wild",
+  #              "Personal",
+  #              "Circus or travelling exhibition",
+  #              "Scientific",
+  #              "Commercial",
+  #              "Zoo")) +
+  coord_flip() +
+  theme(legend.position = "bottom")
+```
+
+Source codes:
+
+-   C Animals bred in captivity in accordance with Resolution Conf.
+    10.16 (Rev.), as well as parts and derivatives thereof, exported
+    under the provisions of Article VII, paragraph 5
+
+-   D Appendix-I animals bred in captivity for commercial purposes in
+    operations included in the Secretariat’s Register, in accordance
+    with Resolution Conf. 12.10 (Rev. CoP15), and Appendix-I plants
+    artificially propagated for commercial purposes, as well as parts
+    and derivatives thereof, exported under the provisions of Article
+    VII, paragraph 4, of the Convention
+
+-   F Animals born in captivity (F1 or subsequent generations) that do
+    not fulfil the definition of ‘bred in captivity’ in Resolution Conf.
+    10.16 (Rev.), as well as parts and derivatives thereof
+
+-   I Confiscated or seized specimens (may be used with another code)
+
+-   O Pre-Convention specimens R Ranched specimens: specimens of animals
+    reared in a controlled environment, taken as eggs or juveniles from
+    the wild, where they would otherwise have had a very low probability
+    of surviving to adulthood
+
+-   U Source unknown (must be justified)
+
+-   W Specimens taken from the wild
+
+```{r}
+top_cats %>% 
+  group_by(common_name, source) %>%
+  ggplot(aes(x = common_name, fill = source)) +
+  geom_bar() +
+  coord_flip()
+```
+
+## Across Time
+
+How has the number of wildlife traded within the Felidae family changed
+over the years?
+
+```{r}
+felidae_trade_trend <- top_cats %>%
+  group_by(year) %>%
+  summarize(total_trade = n(), .groups = "drop")  # Count occurrences per year
+```
+
+```{r}
+ggplot(felidae_trade_trend, aes(x = year, y = total_trade)) +
+  geom_line(color = "blue", size = 1) +  
+  geom_point(color = "red", size = 2) +  
+  labs(title = "Wildlife Trade Trends in the Felidae Family (1975-2024)",
+       x = "Year",
+       y = "Total Transactions") +
+  theme_minimal() 
+```
+
+2013: CITES CoP16 added new trade restrictions on big cats, pangolins,
+and tropical birds.
+
+2016: CITES CoP17 introduced stronger protections for species like
+African lions (Panthera leo), with new regulations limiting the export
+of wild lion parts (e.g., bones used in traditional medicine).
+
+2019: CITES CoP18 imposed stricter trade regulations on cheetahs
+(Acinonyx jubatus), frequently trafficked as exotic pets.
+
+```{r}
+felidae_trade_purpose <- top_cats %>%
+  filter(year >= 2000) %>%  
+  group_by(year, purpose) %>%
+  summarize(total_trade = n(), .groups = "drop")
+
+ggplot(felidae_trade_purpose, aes(x = year, y = total_trade, fill = purpose)) +
+  geom_area(alpha = 0.8) +
+  labs(title = "Purpose of Felidae Trade Over Time (2000 - Present)",
+       x = "Year",
+       y = "Total Transactions") +
+  theme_minimal()
+```
+
+# Questions
+
+1.  What have you learned about your data? Have any potentially
+    interesting patterns emerged?
+
+-    The top 10 species in the Felidae family revealed that lions were
+    the most commonly reported species. My favorite animal is the
+    cheetah and I initially wanted to focus on them but have realized
+    that it maybe more interesting to consider the top 10 species.
+
+-   By analyzing importers/exporters, I identified that the largest
+    exporters are South Africa and Mozambique. Meanwhile the largest
+    importer is Panama and US.
+
+-   The purposes behind Felidae transactions, such as commercial use,
+    captive breeding, or scientific purposes, might show a pattern of
+    increasing demand for exotic pets (e.g., cheetahs as pets),
+    especially after 2010. I want to dig into this more.
+
+-   Looking at trade data from 1975-2024, revealed major shifts in the
+    number of reported species. I identifying some of these trends to
+    better assess how the wildlife trade has evolved.
+
+2.  In HW #1, you outlined some questions that you wanted to answer
+    using these data. Have you made any strides towards answering those
+    questions? If yes, how so? If no, what next steps do you need to
+    take (e.g. I need to create X plot type, I still need to track down
+    Y data, I need to restructure existing data so that you can
+    visualize it in Z ways, etc.)?
+
+    -   I am pretty happy with my bar plot of the top 10 most commonly
+        reported species, I could definitively make it look nicer
+        thematically.
+
+    -   I would like to make some sort of map to showcase the
+        exporter/importer data.
+
+    -   I would like to improve my time series plot to include more
+        information about critical events or policy changes that
+        impacted wildlife trade.
+
+3.  What challenges do you foresee encountering with your data? These
+    can be data wrangling and / or visualization challenges.
+
+    -   I think that making the map of exporters to importers will be
+        challenging. But I know I can do it with more time!
+
+    -   I also was trying to figure out a better way to add a column of
+        the common names and tried GBIF and other avenues but was
+        unsuccessful.

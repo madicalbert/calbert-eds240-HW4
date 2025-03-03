@@ -5,13 +5,12 @@ format: html
 
 ```{r}
 library(tidyverse)
-cites <- read.csv("cites_felidae_1975_2024.csv")
-cites_recent <- read.csv("cites_felidae_2000_2024.csv")
+library(here)
+cites <- read.csv(here("data/cites_felidae_1975_2024.csv"))
+cites_recent <- read.csv(here("data/cites_felidae_2000_2024.csv"))
 ```
 
 ```{r}
-summary(cites)
-
 cites %>%
   count(Taxon) %>%
   ggplot(aes(x = Taxon, y = n)) +
