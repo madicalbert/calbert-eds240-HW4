@@ -10,7 +10,7 @@ execute:
 format:
   html:
     toc: true
-    theme: "sandstone"
+    theme: solar
     code-fold: true  
     code-tools: true  
 editor_options: 
